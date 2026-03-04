@@ -4,8 +4,8 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from telegram.utils.helpers import mention_html
 
 # --- НАСТРОЙКИ (ЗАПОЛНИ ЭТИ ПЕРЕМЕННЫЕ) ---
-BOT_TOKEN = "ТВОЙ_ТОКЕН_БОТА"  # Вставь токен от @BotFather
-ADMIN_ID = 123456789  # Вставь свой цифровой ID
+BOT_TOKEN = "8419477716:AAGzFhUNE42xUh2Xzbwo3FTP62i8_a6_kUw"  # Вставь токен от @BotFather
+ADMIN_ID = 6704545072  # Вставь свой цифровой ID
 MODERATION_CHAT_ID = ADMIN_ID  # Сюда приходят заявки
 # ------------------------------------------
 
@@ -242,4 +242,5 @@ def main():
     updater.idle()
 
 if __name__ == '__main__':
+
     main()
