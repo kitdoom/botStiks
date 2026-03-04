@@ -1,7 +1,8 @@
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, ConversationHandler
-from telegram.utils.helpers import mention_html
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackQueryHandler, ConversationHandler
+from telegram.helpers import mention_html
 
 # --- НАСТРОЙКИ (ЗАПОЛНИ ЭТИ ПЕРЕМЕННЫЕ) ---
 BOT_TOKEN = "8419477716:AAGzFhUNE42xUh2Xzbwo3FTP62i8_a6_kUw"  # Вставь токен от @BotFather
@@ -19,7 +20,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 # --- Команда START ---
-def start(update: Update, context):
+async def start(update: Update, context):
     user = update.effective_user
     welcome_text = (
         f"👋 Привет, {user.first_name}!\n\n"
@@ -28,11 +29,11 @@ def start(update: Update, context):
         "(например, https://t.me/addstickers/durov)\n\n"
         "🖼 Или просто пришли **любой стикер/эмодзи** из этого набора"
     )
-    update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(welcome_text, parse_mode=ParseMode.MARKDOWN)
     return AWAITING_LINK
 
 # --- Принимаем ссылку или стикер ---
-def receive_content(update: Update, context):
+async def receive_content(update: Update, context):
     user_id = update.effective_user.id
     
     if update.message.sticker:
@@ -49,7 +50,7 @@ def receive_content(update: Update, context):
     elif update.message.text and 't.me/addstickers/' in update.message.text:
         link = update.message.text.strip()
         if not link.startswith('https://t.me/addstickers/'):
-            update.message.reply_text("❌ Неверная ссылка. Нужна вида https://t.me/addstickers/... Попробуй ещё раз.")
+            await update.message.reply_text("❌ Неверная ссылка. Нужна вида https://t.me/addstickers/... Попробуй ещё раз.")
             return AWAITING_LINK
             
         user_data[user_id] = {
@@ -58,11 +59,11 @@ def receive_content(update: Update, context):
         }
         reply_text = f"✅ Ссылка принята!"
     else:
-        update.message.reply_text("❌ Пожалуйста, отправь ссылку на набор или сам стикер.")
+        await update.message.reply_text("❌ Пожалуйста, отправь ссылку на набор или сам стикер.")
         return AWAITING_LINK
 
     # Спрашиваем про описание (необязательно)
-    update.message.reply_text(
+    await update.message.reply_text(
         f"{reply_text}\n\n"
         "📝 Теперь можешь добавить **короткое описание** своего набора (например, о чём стикеры, настроение, тематика).\n"
         "Это необязательно — просто отправь /skip, чтобы пропустить."
@@ -70,25 +71,25 @@ def receive_content(update: Update, context):
     return AWAITING_DESCRIPTION
 
 # --- Принимаем описание (или пропуск) ---
-def receive_description(update: Update, context):
+async def receive_description(update: Update, context):
     user_id = update.effective_user.id
     text = update.message.text.strip()
     
     if text == '/skip':
         description = None
-        update.message.reply_text("⏩ Ок, пропускаем описание.")
+        await update.message.reply_text("⏩ Ок, пропускаем описание.")
     else:
         description = text
-        update.message.reply_text("✅ Описание сохранено!")
+        await update.message.reply_text("✅ Описание сохранено!")
     
     if user_id in user_data:
         user_data[user_id]['description'] = description
     else:
-        update.message.reply_text("Ошибка, начни заново /start")
+        await update.message.reply_text("Ошибка, начни заново /start")
         return ConversationHandler.END
     
     # Спрашиваем про подпись (обязательно)
-    update.message.reply_text(
+    await update.message.reply_text(
         "✍️ **Как тебя подписать в посте?**\n\n"
         "1. Отправь свой **ник** (например, @nickname)\n"
         "2. Отправь **имя** (например, Анна)\n"
@@ -97,14 +98,14 @@ def receive_description(update: Update, context):
     return AWAITING_SIGNATURE
 
 # --- Пропуск описания (обработчик команды /skip) ---
-def skip_description(update: Update, context):
+async def skip_description(update: Update, context):
     user_id = update.effective_user.id
     if user_id in user_data:
         user_data[user_id]['description'] = None
-    update.message.reply_text("⏩ Пропускаем описание.")
+    await update.message.reply_text("⏩ Пропускаем описание.")
     
     # Сразу спрашиваем подпись
-    update.message.reply_text(
+    await update.message.reply_text(
         "✍️ **Как тебя подписать в посте?**\n\n"
         "1. Отправь свой **ник** (например, @nickname)\n"
         "2. Отправь **имя** (например, Анна)\n"
@@ -113,7 +114,7 @@ def skip_description(update: Update, context):
     return AWAITING_SIGNATURE
 
 # --- Принимаем подпись и отправляем заявку админу ---
-def receive_signature(update: Update, context):
+async def receive_signature(update: Update, context):
     user_id = update.effective_user.id
     signature_input = update.message.text.strip()
     
@@ -128,7 +129,7 @@ def receive_signature(update: Update, context):
     if user_id in user_data:
         user_data[user_id]['signature'] = signature
     else:
-        update.message.reply_text("Ошибка, начни заново /start")
+        await update.message.reply_text("Ошибка, начни заново /start")
         return ConversationHandler.END
     
     # --- Отправка заявки админу ---
@@ -164,7 +165,7 @@ def receive_signature(update: Update, context):
     
     # Отправляем админу
     if user_data[user_id]['type'] == 'sticker':
-        context.bot.send_sticker(
+        await context.bot.send_sticker(
             chat_id=MODERATION_CHAT_ID,
             sticker=user_data[user_id]['file_id'],
             caption=text_for_admin,
@@ -172,7 +173,7 @@ def receive_signature(update: Update, context):
             reply_markup=reply_markup
         )
     else:
-        context.bot.send_message(
+        await context.bot.send_message(
             chat_id=MODERATION_CHAT_ID,
             text=text_for_admin,
             parse_mode=ParseMode.HTML,
@@ -181,9 +182,9 @@ def receive_signature(update: Update, context):
         )
     
     # Сообщаем пользователю, что заявка отправлена
-    update.message.reply_text(
+    await update.message.reply_text(
         "✨ Спасибо! Твоя заявка отправлена администратору.\n"
-        "Если твой набор подойдёт для канала, с тобой свяжутся (или ты увидишь его в канале)."
+        "Если твой набор подойдёт для канала, публикация в течении 7 дней."
     )
     
     # Очищаем данные (по желанию можно оставить до получения отметки)
@@ -193,54 +194,52 @@ def receive_signature(update: Update, context):
     return ConversationHandler.END
 
 # --- Обработчик кнопок (просто отметка для админа) ---
-def moderation_callback(update: Update, context):
+async def moderation_callback(update: Update, context):
     query = update.callback_query
-    query.answer()
+    await query.answer()
     
     admin_id = query.from_user.id
     if admin_id != ADMIN_ID:
-        query.edit_message_text("⛔️ Нет прав")
+        await query.edit_message_text("⛔️ Нет прав")
         return
     
     # Просто меняем текст, никаких уведомлений пользователю
-    query.edit_message_text(
+    await query.edit_message_text(
         text=query.message.text + "\n\n✅ Отмечено",
         parse_mode=ParseMode.HTML
     )
 
 # --- Отмена диалога ---
-def cancel(update: Update, context):
+async def cancel(update: Update, context):
     user_id = update.effective_user.id
     if user_id in user_data:
         del user_data[user_id]
-    update.message.reply_text("Действие отменено. Чтобы начать заново, введи /start")
+    await update.message.reply_text("Действие отменено. Чтобы начать заново, введи /start")
     return ConversationHandler.END
 
 def main():
-    updater = Updater(BOT_TOKEN, use_context=True)
-    dp = updater.dispatcher
+    # Создаем приложение
+    application = Application.builder().token(BOT_TOKEN).build()
 
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            AWAITING_LINK: [MessageHandler(Filters.sticker | Filters.text & ~Filters.command, receive_content)],
+            AWAITING_LINK: [MessageHandler(filters.Sticker.ALL | filters.TEXT & ~filters.COMMAND, receive_content)],
             AWAITING_DESCRIPTION: [
-                MessageHandler(Filters.text & ~Filters.command, receive_description),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_description),
                 CommandHandler('skip', skip_description)
             ],
-            AWAITING_SIGNATURE: [MessageHandler(Filters.text & ~Filters.command, receive_signature)],
+            AWAITING_SIGNATURE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_signature)],
         },
         fallbacks=[CommandHandler('cancel', cancel)],
         allow_reentry=True
     )
     
-    dp.add_handler(conv_handler)
-    dp.add_handler(CallbackQueryHandler(moderation_callback, pattern='^mark_'))
+    application.add_handler(conv_handler)
+    application.add_handler(CallbackQueryHandler(moderation_callback, pattern='^mark_'))
     
-    updater.start_polling()
-    logger.info("Бот запущен!")
-    updater.idle()
+    # Запускаем бота
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
-
     main()
